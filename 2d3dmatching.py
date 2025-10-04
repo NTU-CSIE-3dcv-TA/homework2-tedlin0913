@@ -64,7 +64,7 @@ def pnpsolver(query,model,cameraMatrix=0,distortion=0):
     # Step 4: Solve PnP using RANSAC
     retval, rvec, tvec, inliers = cv2.solvePnPRansac(
         pts_3d, pts_2d, cameraMatrix, distCoeffs,
-        iterationsCount=1000,
+        iterationsCount=100,
         reprojectionError=8.0,
         confidence=0.99,
         flags=cv2.SOLVEPNP_EPNP
@@ -172,7 +172,6 @@ def visualization(Camera2World_Transform_Matrixs, points3D_df):
         Camera2World_Transform_Matrixs: List of camera-to-world transformation matrices
         points3D_df: DataFrame containing 3D points with XYZ and RGB columns
     """
-    import open3d as o3d
 
     # Create point cloud from 3D points
     pcd = o3d.geometry.PointCloud()
@@ -286,6 +285,10 @@ if __name__ == "__main__":
         c2w = np.eye(4)
         c2w[:3, :3] = R_mat.T  # R^T
         c2w[:3, 3] = -R_mat.T @ t.reshape(3)  # -R^T * t
+
+        # Fix coordinate system: flip Y and Z axes
+        flip = np.diag([1, -1, -1, 1])
+        c2w = c2w @ flip
 
         Camera2World_Transform_Matrixs.append(c2w)
 
