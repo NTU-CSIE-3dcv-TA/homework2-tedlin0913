@@ -4,6 +4,7 @@ import numpy as np
 import random
 import cv2
 import time
+import re
 
 from tqdm import tqdm
 import open3d as o3d
@@ -164,13 +165,17 @@ def create_camera_pyramid(c2w, color=[1, 0, 0], scale=0.3):
 
     return line_set
 
-def visualization(Camera2World_Transform_Matrixs, points3D_df):
+def visualization(Camera2World_Transform_Matrixs, points3D_df, name_ids,
+                  training_c2w_list=None, training_name_ids=None):
     """
     Visualize camera poses as pyramids along with trajectory and 3D point cloud.
 
     Args:
-        Camera2World_Transform_Matrixs: List of camera-to-world transformation matrices
+        Camera2World_Transform_Matrixs: List of validation camera-to-world transformation matrices
         points3D_df: DataFrame containing 3D points with XYZ and RGB columns
+        name_ids: List of numeric IDs extracted from NAME column for validation cameras
+        training_c2w_list: List of training camera-to-world transformation matrices (optional)
+        training_name_ids: List of numeric IDs for training cameras (optional)
     """
 
     # Create point cloud from 3D points
@@ -186,18 +191,21 @@ def visualization(Camera2World_Transform_Matrixs, points3D_df):
     # Create geometries list
     geometries = [pcd]
 
-    # Extract camera positions for trajectory
+    # Sort validation cameras by name_ids to get correct trajectory order
+    sorted_indices = np.argsort(name_ids)
+    sorted_c2w = [Camera2World_Transform_Matrixs[i] for i in sorted_indices]
+
+    # Extract camera positions for trajectory (in sorted order)
     camera_positions = []
-    for c2w in Camera2World_Transform_Matrixs:
+    for c2w in sorted_c2w:
         camera_positions.append(c2w[:3, 3])
 
-    # Create camera pyramids
-    for i, c2w in enumerate(Camera2World_Transform_Matrixs):
-        # Create camera pyramid (red color)
+    # Create validation camera pyramids (red color)
+    for c2w in sorted_c2w:
         pyramid = create_camera_pyramid(c2w, color=[1, 0, 0], scale=0.2)
         geometries.append(pyramid)
 
-    # Create trajectory line
+    # Create validation trajectory line connecting cameras in order of name_ids
     if len(camera_positions) > 1:
         trajectory_points = np.array(camera_positions)
         trajectory_lines = [[i, i+1] for i in range(len(camera_positions)-1)]
@@ -207,6 +215,33 @@ def visualization(Camera2World_Transform_Matrixs, points3D_df):
         trajectory.lines = o3d.utility.Vector2iVector(trajectory_lines)
         trajectory.colors = o3d.utility.Vector3dVector([[0, 1, 0] for _ in trajectory_lines])  # green
         geometries.append(trajectory)
+
+    # Add training cameras if provided
+    if training_c2w_list is not None and training_name_ids is not None:
+        # Sort training cameras by name_ids
+        sorted_training_indices = np.argsort(training_name_ids)
+        sorted_training_c2w = [training_c2w_list[i] for i in sorted_training_indices]
+
+        # Extract training camera positions
+        training_camera_positions = []
+        for c2w in sorted_training_c2w:
+            training_camera_positions.append(c2w[:3, 3])
+
+        # Create training camera pyramids (blue color)
+        for c2w in sorted_training_c2w:
+            pyramid = create_camera_pyramid(c2w, color=[0, 0, 1], scale=0.2)
+            geometries.append(pyramid)
+
+        # Create training trajectory line (cyan color)
+        if len(training_camera_positions) > 1:
+            training_trajectory_points = np.array(training_camera_positions)
+            training_trajectory_lines = [[i, i+1] for i in range(len(training_camera_positions)-1)]
+
+            training_trajectory = o3d.geometry.LineSet()
+            training_trajectory.points = o3d.utility.Vector3dVector(training_trajectory_points)
+            training_trajectory.lines = o3d.utility.Vector2iVector(training_trajectory_lines)
+            training_trajectory.colors = o3d.utility.Vector3dVector([[0, 1, 1] for _ in training_trajectory_lines])  # cyan
+            geometries.append(training_trajectory)
 
     # Visualize
     o3d.visualization.draw_geometries(geometries,
@@ -232,12 +267,17 @@ if __name__ == "__main__":
     print(f"Processing {len(IMAGE_ID_LIST)} validation images...")
     r_list = []
     t_list = []
+    name_id_list = []
     rotation_error_list = []
     translation_error_list = []
     for idx in tqdm(IMAGE_ID_LIST):
         # Load quaery image
         fname = (images_df.loc[images_df["IMAGE_ID"] == idx])["NAME"].values[0]
         rimg = cv2.imread("data/frames/" + fname, cv2.IMREAD_GRAYSCALE)
+
+        # Extract numeric ID from filename (e.g., "valid_img0.jpg" -> 0)
+        match = re.search(r'(\d+)', fname)
+        name_id = int(match.group(1)) if match else idx
 
         # Load query keypoints and descriptors
         points = point_desc_df.loc[point_desc_df["IMAGE_ID"] == idx]
@@ -253,6 +293,7 @@ if __name__ == "__main__":
 
         r_list.append(rvec)
         t_list.append(tvec)
+        name_id_list.append(name_id)
 
         # Get camera pose groudtruth
         ground_truth = images_df.loc[images_df["IMAGE_ID"]==idx]
@@ -292,4 +333,33 @@ if __name__ == "__main__":
 
         Camera2World_Transform_Matrixs.append(c2w)
 
-    visualization(Camera2World_Transform_Matrixs, points3D_df)
+    # Add training cameras to visualization
+    training_images = images_df[images_df["NAME"].str.startswith("train_")]
+    training_c2w_list = []
+    training_name_ids = []
+
+    for _, row in training_images.iterrows():
+        # Extract ground truth pose from training images
+        qx, qy, qz, qw = row["QX"], row["QY"], row["QZ"], row["QW"]
+        tx, ty, tz = row["TX"], row["TY"], row["TZ"]
+
+        # Convert quaternion to rotation matrix
+        R_mat = R.from_quat([qx, qy, qz, qw]).as_matrix()
+
+        # Ground truth is world-to-camera, convert to camera-to-world
+        c2w = np.eye(4)
+        c2w[:3, :3] = R_mat.T
+        c2w[:3, 3] = -R_mat.T @ np.array([tx, ty, tz])
+
+        # Fix coordinate system: flip Y and Z axes
+        flip = np.diag([1, -1, -1, 1])
+        c2w = c2w @ flip
+
+        training_c2w_list.append(c2w)
+
+        # Extract numeric ID from filename
+        match = re.search(r'(\d+)', row["NAME"])
+        training_name_ids.append(int(match.group(1)) if match else row["IMAGE_ID"])
+
+    visualization(Camera2World_Transform_Matrixs, points3D_df, name_id_list,
+                  training_c2w_list, training_name_ids)
