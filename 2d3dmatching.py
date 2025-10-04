@@ -133,9 +133,9 @@ def create_camera_pyramid(c2w, color=[1, 0, 0], scale=0.3):
     # Define pyramid vertices in camera coordinates
     # Apex at origin (optical center)
     apex = [0, 0, 0]
-    # Base corners (forming a square in front of camera)
+    # Base corners (forming a square facing the scene, at negative Z)
     base_size = scale
-    base_depth = scale * 1.5
+    base_depth = -scale * 1.5
     base = [
         [-base_size, -base_size, base_depth],  # bottom-left
         [base_size, -base_size, base_depth],   # bottom-right
