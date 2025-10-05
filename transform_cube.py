@@ -153,4 +153,4 @@ print('Scale factor: {}'.format(scale))
 '''
 
 np.save('cube_transform_mat.npy', get_transform_mat(R_euler, t, scale))
-np.save('cube_vertices.npy', np.asarray(cube.vertices))
+np.save('cube_vertices.npy', cube_vertices)  # Save base cube vertices, not transformed

@@ -295,7 +295,7 @@ def generate_ar_video(output_path='ar_cube_output.mp4', fps=30, voxel_density=15
     voxels, voxel_colors = create_cube_voxels(cube_vertices, density=voxel_density)
     print(f"Generated {len(voxels)} voxels")
 
-    # Apply cube transformation
+    # Apply cube transformation to voxels
     voxels_transformed = apply_transformation(voxels, transform_mat)
 
     # Initialize video writer
