@@ -31,13 +31,13 @@ def get_transform_mat(rotation, translation, scale):
     return transform_mat
 
 def update_cube():
-    global cube, cube_vertices, R_euler, t, scale
-    
+    global cube, cube_vertices_open3d, R_euler, t, scale
+
     transform_mat = get_transform_mat(R_euler, t, scale)
-    
+
     transform_vertices = (transform_mat @ np.concatenate([
-                            cube_vertices.transpose(), 
-                            np.ones([1, cube_vertices.shape[0]])
+                            cube_vertices_open3d.transpose(),
+                            np.ones([1, cube_vertices_open3d.shape[0]])
                             ], axis=0)).transpose()
 
     cube.vertices = o3d.utility.Vector3dVector(transform_vertices)
@@ -106,9 +106,14 @@ vis.add_geometry(axes)
 
 # load cube
 cube = o3d.geometry.TriangleMesh.create_box(width=1.0, height=1.0, depth=1.0)
-# Define base cube vertices in the SAME order as create_default_cube.py
-# to ensure consistent face definitions in create_cube_voxels()
-cube_vertices = np.array([
+
+# Open3D uses its own vertex ordering for the mesh
+# Store base vertices in Open3D's order for visualization
+cube_vertices_open3d = np.asarray(cube.vertices).copy()
+
+# Also define standard vertex order (matching create_default_cube.py)
+# This will be saved to cube_vertices.npy for use in ar_cube_video.py
+cube_vertices_standard = np.array([
     [0, 0, 0],
     [1, 0, 0],
     [1, 1, 0],
@@ -118,6 +123,7 @@ cube_vertices = np.array([
     [1, 1, 1],
     [0, 1, 1]
 ], dtype=np.float64)
+
 vis.add_geometry(cube)
 
 R_euler = np.array([0, 0, 0]).astype(float)
@@ -165,4 +171,4 @@ print('Scale factor: {}'.format(scale))
 '''
 
 np.save('cube_transform_mat.npy', get_transform_mat(R_euler, t, scale))
-np.save('cube_vertices.npy', cube_vertices)  # Save base cube vertices, not transformed
+np.save('cube_vertices.npy', cube_vertices_standard)  # Save in standard order for ar_cube_video.py
