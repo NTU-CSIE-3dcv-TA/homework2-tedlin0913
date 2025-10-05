@@ -26,7 +26,8 @@ def load_axes():
 def get_transform_mat(rotation, translation, scale):
     r_mat = R.from_euler('xyz', rotation, degrees=True).as_matrix()
     scale_mat = np.eye(3) * scale
-    transform_mat = np.concatenate([scale_mat @ r_mat, translation.reshape(3, 1)], axis=1)
+    # Correct order: rotate then scale (R @ S, not S @ R)
+    transform_mat = np.concatenate([r_mat @ scale_mat, translation.reshape(3, 1)], axis=1)
     return transform_mat
 
 def update_cube():
@@ -105,7 +106,18 @@ vis.add_geometry(axes)
 
 # load cube
 cube = o3d.geometry.TriangleMesh.create_box(width=1.0, height=1.0, depth=1.0)
-cube_vertices = np.asarray(cube.vertices).copy()
+# Define base cube vertices in the SAME order as create_default_cube.py
+# to ensure consistent face definitions in create_cube_voxels()
+cube_vertices = np.array([
+    [0, 0, 0],
+    [1, 0, 0],
+    [1, 1, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+    [1, 0, 1],
+    [1, 1, 1],
+    [0, 1, 1]
+], dtype=np.float64)
 vis.add_geometry(cube)
 
 R_euler = np.array([0, 0, 0]).astype(float)
