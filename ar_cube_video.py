@@ -140,19 +140,21 @@ def project_points(points_3d, R_mat, t_vec, camera_matrix, dist_coeffs):
     return points_2d, depths
 
 
-def draw_cube_with_painters_algorithm(image, points_2d, depths, colors, point_size=3):
+def draw_cube_with_painters_algorithm(image, points_2d, depths, colors, voxels_camera, point_size=3):
     """
     Draw cube voxels on image using painter's algorithm.
 
     Painter's Algorithm:
-    1. Sort each voxel by depth
-    2. Draw voxels from furthest to closest
+    1. Filter voxels by viewing angle (remove those at extreme angles)
+    2. Sort remaining voxels by depth
+    3. Draw voxels from furthest to closest
 
     Args:
         image: input image to draw on
         points_2d: Nx2 array of 2D image coordinates
         depths: N array of depths
         colors: Nx3 array of RGB colors [0-1 range]
+        voxels_camera: Nx3 array of voxel positions in camera coordinates
         point_size: size of each voxel point
 
     Returns:
@@ -163,20 +165,55 @@ def draw_cube_with_painters_algorithm(image, points_2d, depths, colors, point_si
 
     h, w = image.shape[:2]
 
-    # Sort indices by depth (furthest first)
-    sorted_indices = np.argsort(-depths)
+    # Filter voxels by viewing angle
+    # In camera coordinates: +Z is forward, X is right, Y is down
+    # A voxel at (X, Y, Z) has viewing angle = atan2(sqrt(X² + Y²), Z)
+    # Only draw voxels within reasonable field of view (< 80 degrees from center)
+
+    valid_mask = np.ones(len(depths), dtype=bool)
+
+    for idx in range(len(voxels_camera)):
+        x_cam, y_cam, z_cam = voxels_camera[idx]
+
+        # Skip if behind camera
+        if z_cam <= 0:
+            valid_mask[idx] = False
+            continue
+
+        # Calculate viewing angle from camera center
+        # Distance from camera's Z-axis (optical axis)
+        lateral_dist = np.sqrt(x_cam**2 + y_cam**2)
+
+        # Angle from optical axis
+        angle = np.arctan2(lateral_dist, z_cam)
+        angle_degrees = np.degrees(angle)
+
+        # Skip voxels at extreme angles (> 50 degrees)
+        # These are either behind camera or at extreme periphery
+        if angle_degrees > 50:
+            valid_mask[idx] = False
+            continue
+
+        # Also check if within image bounds
+        x_2d, y_2d = points_2d[idx]
+        if x_2d < 0 or x_2d >= w or y_2d < 0 or y_2d >= h:
+            valid_mask[idx] = False
+            continue
+
+    # Get valid indices
+    valid_indices = np.where(valid_mask)[0]
+
+    if len(valid_indices) == 0:
+        return output
+
+    # Sort valid voxels by depth (furthest first)
+    valid_depths = depths[valid_indices]
+    sorted_order = np.argsort(-valid_depths)
+    sorted_valid_indices = valid_indices[sorted_order]
 
     # Draw each voxel from furthest to closest
-    for idx in sorted_indices:
-        # Skip points with negative depth (behind camera)
-        if depths[idx] <= 0:
-            continue
-
+    for idx in sorted_valid_indices:
         x, y = points_2d[idx]
-
-        # Skip points outside image boundaries
-        if x < 0 or x >= w or y < 0 or y >= h:
-            continue
 
         # Convert color from [0-1] to [0-255] BGR format
         color_bgr = (
@@ -285,9 +322,26 @@ def generate_ar_video(output_path='ar_cube_output.mp4', fps=30, voxel_density=15
             voxels_transformed, R_mat, t_vec, camera_matrix, dist_coeffs
         )
 
-        # Draw cube using painter's algorithm
+        # Calculate voxel positions in camera coordinates (needed for angle checking)
+        voxels_camera = (R_mat @ voxels_transformed.T).T + t_vec.reshape(1, 3)
+
+        # Check visibility before drawing
+        h, w = image.shape[:2]
+        points_in_front = np.sum(depths > 0)
+        points_in_bounds = np.sum((points_2d[:, 0] >= 0) & (points_2d[:, 0] < w) &
+                                  (points_2d[:, 1] >= 0) & (points_2d[:, 1] < h) &
+                                  (depths > 0))
+
+        # Debug: print visibility for each frame
+        if points_in_bounds > 0:
+            print(f"Frame {row['NAME']}: {points_in_bounds}/{len(depths)} voxels visible (before angle filter), "
+                  f"depth range: [{depths[depths>0].min():.2f}, {depths[depths>0].max():.2f}]")
+        else:
+            print(f"Frame {row['NAME']}: NO VOXELS VISIBLE (all outside frame or behind camera)")
+
+        # Draw cube using painter's algorithm with angle filtering
         output_image = draw_cube_with_painters_algorithm(
-            image, points_2d, depths, voxel_colors, point_size=point_size
+            image, points_2d, depths, voxel_colors, voxels_camera, point_size=point_size
         )
 
         # Write frame to video
