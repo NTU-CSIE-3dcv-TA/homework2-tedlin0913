@@ -45,24 +45,29 @@ def create_cube_voxels(cube_vertices, density=10):
         voxels: Nx3 array of 3D points on cube surface
         colors: Nx3 array of RGB colors for each voxel
     """
+    # Cube vertices are indexed as:
+    # 0-3: front face (lower Z), 4-7: back face (higher Z)
+    # Each face: 0,1,2,3 in counter-clockwise order when viewed from outside
+
     # Define the 6 faces of the cube using vertex indices
+    # Each face is ordered as: bottom-left, bottom-right, top-right, top-left (CCW from outside)
     faces = [
-        [0, 1, 2, 3],  # front face
-        [4, 5, 6, 7],  # back face
-        [0, 1, 5, 4],  # bottom face
-        [2, 3, 7, 6],  # top face
-        [0, 3, 7, 4],  # left face
-        [1, 2, 6, 5]   # right face
+        [0, 1, 2, 3],  # front face (Z = min)
+        [5, 4, 7, 6],  # back face (Z = max)
+        [4, 5, 1, 0],  # bottom face (Y = min)
+        [3, 2, 6, 7],  # top face (Y = max)
+        [4, 0, 3, 7],  # left face (X = min)
+        [1, 5, 6, 2]   # right face (X = max)
     ]
 
     # Different colors for each face
     face_colors = [
-        [1.0, 0.0, 0.0],  # red
-        [0.0, 1.0, 0.0],  # green
-        [0.0, 0.0, 1.0],  # blue
-        [1.0, 1.0, 0.0],  # yellow
-        [1.0, 0.0, 1.0],  # magenta
-        [0.0, 1.0, 1.0]   # cyan
+        [1.0, 0.0, 0.0],  # red - front
+        [0.0, 1.0, 0.0],  # green - back
+        [0.0, 0.0, 1.0],  # blue - bottom
+        [1.0, 1.0, 0.0],  # yellow - top
+        [1.0, 0.0, 1.0],  # magenta - left
+        [0.0, 1.0, 1.0]   # cyan - right
     ]
 
     voxels = []
@@ -80,6 +85,9 @@ def create_cube_voxels(cube_vertices, density=10):
                 v = j / (density - 1) if density > 1 else 0.5
 
                 # Bilinear interpolation on the face
+                # v0 -- v1
+                # |      |
+                # v3 -- v2
                 point = (1-u)*(1-v)*v0 + u*(1-v)*v1 + u*v*v2 + (1-u)*v*v3
                 voxels.append(point)
                 colors.append(face_colors[face_idx])
