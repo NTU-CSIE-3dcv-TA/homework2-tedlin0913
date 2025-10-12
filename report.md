@@ -56,7 +56,7 @@ I used COLMAP's gui automatic reconstruction pipeline to perform Structure from 
 
 **Video Demonstration:**
 
-**YouTube Link:** [Your YouTube Video Link for Q1-1]
+**YouTube Link:** [Q1-1](https://youtu.be/jaaFJW0LzV8)
 
 ---
 
@@ -92,7 +92,7 @@ I used **MeshLab** to convert the sparse point cloud from COLMAP into a 3D trian
 
 **Video Demonstration:**
 
-**YouTube Link:** [Your YouTube Video Link for Q1-2]
+**YouTube Link:** [Q1-2](https://youtu.be/IZAeDhAoYd8)
 
 ---
 
@@ -142,7 +142,7 @@ Median Translation Error: 0.0015
 
 **Video Demonstration:**
 
-**YouTube Link:** [Your YouTube Video Link for Q2-1]
+**YouTube Link:** [Q2-1](https://youtu.be/fduC_FIRrsg)
 
 ---
 
@@ -173,7 +173,7 @@ Median Translation Error: 0.0015
 
 **Video Demonstration:**
 
-**YouTube Link:** [Your YouTube Video Link for Q2-2]
+**YouTube Link:** [Q2-2](https://youtu.be/63qo-MqNBW4)
 
 ---
 
