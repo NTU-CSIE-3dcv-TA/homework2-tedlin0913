@@ -171,4 +171,4 @@ print('Scale factor: {}'.format(scale))
 '''
 
 np.save('cube_transform_mat.npy', get_transform_mat(R_euler, t, scale))
-np.save('cube_vertices.npy', cube_vertices_standard)  # Save in standard order for ar_cube_video.py
+np.save('cube_vertices.npy', cube_vertices_standard)
