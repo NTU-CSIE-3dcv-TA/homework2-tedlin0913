@@ -124,8 +124,8 @@ I used **MeshLab** to convert the sparse point cloud from COLMAP into a 3D trian
 
 **Results:**
 ```
-Median Rotation Error: [Your value] degrees
-Median Translation Error: [Your value]
+Median Rotation Error: 0.0152 degrees
+Median Translation Error: 0.0015
 ```
 
 #### Step 3: Visualization with Open3D
@@ -169,6 +169,8 @@ Median Translation Error: [Your value]
 - Point size: 3-4 pixels
 - Video: 30 FPS, 1920×1080
 
+[video](ar_cube_output.mp4) can be found in the project folder ar_cube_output.mp4
+
 **Video Demonstration:**
 
 **YouTube Link:** [Your YouTube Video Link for Q2-2]
@@ -189,12 +191,5 @@ Median Translation Error: [Your value]
   - Report structure and formatting
   - Technical writing assistance
   - Documentation of methodology
-- **Extent of Contribution:** ~30% (writing assistance, no code generation)
-
-[If you discussed with classmates, mention them here:]
-- **Collaborators:** [Name 1, Name 2, ...]
-- **Contributions:** [What was discussed]
-
+- **Extent of Contribution:** ~30% (writing assistance, code fix)
 ---
-
-*End of Report - Last Updated: 2025-10-12*
